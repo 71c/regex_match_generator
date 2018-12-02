@@ -1,0 +1,366 @@
+Replacing \b:
+(^\w|\w$|\W\w|\w\W)
+ner\b -> (ner)(?:$|\W)
+\bner -> (?:^|\W)(ner)
+
+use re.finditer()
+like
+text = 'ner nerbe n owne '
+regex = r'(ner)(?:$|\W)'
+matches = re.finditer(regex, text)
+for m in matches:
+    print('%02d-%02d: "%s"' % (m.start(), m.end(), m.groups()))
+
+
+
+
+
+
+
+
+def replace_metas(input):
+    range_regex = r'(?<!\\)\{(\d+,?\d*|,\d+)(?<!\\)\}'
+
+    input = regex.sub(r'(?<!\\)\\w', '[A-Za-z0-9_]', input)
+    input = regex.sub(r'(?<!\\)\\W', '[^A-Za-z0-9_]', input)
+    input = regex.sub(r'(?<!\\)\\d', '[0-9]', input)
+    input = regex.sub(r'(?<!\\)\\D', '[^0-9]', input)
+    input = regex.sub(r'(?<!\\)\\s', r'[\\f\\n\\r\\t\\v]', input)
+    input = regex.sub(r'(?<!\\)\\S', r'[^\\f\\n\\r\\t\\v]', input)
+    input = regex.sub(r'(?<!\\)\\f', '\f', input)
+    input = regex.sub(r'(?<!\\)\\n', '\n', input)
+    input = regex.sub(r'(?<!\\)\\r', '\r', input)
+    input = regex.sub(r'(?<!\\)\\t', '\t', input)
+    input = regex.sub(r'(?<!\\)\\v', '\v', input)
+    input = regex.sub(r'(?<!\\)\\a', '\a', input)
+
+    input = regex.sub(r'(?<!\\)\*', '{0,}', input)
+    input = regex.sub(r'(?<!\\)\+', '{1,}', input)
+    input = regex.sub(rf'(?<!\\|{range_regex})\?(?=\?)', '{0,1}', input)
+    input = regex.sub(rf'(?<!\\|{range_regex})\?', '{0,1}', input)
+
+    input = input.replace(r'\\', '\\')
+
+    return input
+
+    # def m(r):
+    #     return re.findall(
+    #         re_parens_w_or + re_range + r'?|\[[^\[\]]+\]' + re_range + r'?|.' +
+    #         re_range + r'?|[^()\[\]]+', r)
+
+    # def possibilities(parsed):
+    #     for i in range(len(parsed)):
+    #         x = parsed[i]
+    #         x = re.sub(r'\[(.+)\]', lambda m: f"({'|'.join(list(m.group(1)))})", x)
+    #         x = re.sub(f'([^)])({repeat})',
+    #                    lambda s: f'({s.group(1)}){s.group(2)}', x)
+    #         x = re.sub(parens + '$', lambda m: m.group(0) + '{1,1}', x)
+    #         if re.match(parens, x):
+    #             x = re.findall(parens + '|' + repeat, x)
+    #             x[0] = re.split('[|()]', x[0])[1:-1]
+    #             x[1] = list(map(int, re.split('[,{}]', x[1])[1:-1]))
+    #             x = [
+    #                 ''.join(s) for t in [
+    #                     product(x[0], repeat=j)
+    #                     for j in range(x[1][0], x[1][1] + 1)
+    #                 ] for s in t
+    #             ]
+    #         parsed[i] = x
+    #     parsed = [[p] if type(p) is str else p for p in parsed]
+    #     return [''.join(l) for l in product(*parsed)]
+
+
+
+
+
+
+(yu(az|sd)yu){0,2}
+['y', 'u', ['az', 'sd'], 'y', 'u']{0,2}
+
+
+
+
+
+
+
+if i >= 1:
+    if s[i - 1] == bs:
+        if i >= 2 and s[i - 2] == bs:
+            pass # yes
+    else:
+        pass # yes
+else:
+    pass # yes
+
+
+
+
+    # def parse(s):
+    #     pattern = fr'{parens}{repeat}?|{char_range}{repeat}?|.{repeat}?|[^()\[\]]+'
+    #     return re.findall(pattern, s)
+
+
+
+
+
+def parsed_regex_product(tokens):
+    for i, token in enumerate(tokens):
+        if any(type(sub_token) in [list, tuple] for sub_token in token):
+            tokens[i] = parsed_regex_product(token)
+    print(tokens)
+    if homogeneous_type(tokens):
+        return [''.join(l) for l in product(*tokens)]
+    else:
+        new_tokens = []
+        for token in tokens:
+            if type(token) in [list, tuple]:
+                for sub_token in token:
+                    new_tokens.append(sub_token)
+            else:
+                new_tokens.append(token)
+        return new_tokens
+
+def parsed_regex_product(tokens):
+    for i, token in enumerate(tokens):
+        if any(type(sub_token) in [list, tuple] for sub_token in token):
+            tokens[i] = parsed_regex_product_full(token)
+    if homogeneous_type(tokens):
+        return [''.join(l) for l in product(*tokens)]
+    new_tokens = []
+    for token in tokens:
+        if type(token) in [list, tuple]:
+            for sub_token in token:
+                new_tokens.append(sub_token)
+        else:
+            new_tokens.append(token)
+    return new_tokens
+
+
+
+
+def regex_to_list(s):
+    backslash = '\\c' [0]
+    i = 0
+    tokens = []
+    last_or_section_start_index = 0
+    or_section_start_index = 0
+    while i < len(s):
+        c = s[i]
+
+        a = False if i == 0 else s[i - 1] == backslash
+        b = False if i <= 1 else s[i - 2] == backslash
+        not_escaped = a or not b
+        if not_escaped and c in '()|':
+            if c == '|':
+                last_or_section_start_index = or_section_start_index
+
+                joined = ''.join(tokens[or_section_start_index:i])
+                # print(i, or_section_start_index)
+                tokens[or_section_start_index] = joined
+                tokens = tokens[:last_or_section_start_index + 1] + tokens[i-1:]
+                print(tokens, i)
+                # i -= (i - or_section_start_index) - 1
+
+                or_section_start_index = i
+        else:
+            if c in '()|':
+                pass # remove backslash
+            tokens.append(c)
+        i += 1
+    return tokens
+
+
+
+  def regex_to_list(s):
+      tokens = re.findall(r'[|(){}\\]|[^|(){}\\]+', s)
+      for i, (a, b) in enumerate(zip(tokens, tokens[1:])):
+          if re.match(r'\\[|(){}\\]', a + b):
+              tokens[i] = a + b
+              tokens[i + 1] = ''
+      tokens = [token for token in tokens if token != '']
+      return tokens
+
+
+def parse_tokenized_regex(tokens):
+    parsed = []
+    stack = [[]]
+    have_placed_left_paren = False
+    for i, token in enumerate(tokens):
+        last_token_is_or = False if i == 0 else tokens[i - 1] == '|'
+        if token not in '(){}|':
+            stack[-1].append(token)
+            # if last_token_is_or:
+            #     stack[-1][-1] = [stack[-1][-1]]
+
+            # if not last_token_is_or and i > 0 and len(stack[-1]) > 0:
+            #     print(stack[-1])
+            #     stack[-1][-1] = [stack[-1][-1]]
+        elif token == '(':
+            # if not last_token_is_or and have_placed_left_paren: #  and len(stack[-1]) > 0
+            if not last_token_is_or and i > 1:
+                print(stack[-1])
+                stack[-1][-1] = [stack[-1][-1]]
+            stack.append([])
+            have_placed_left_paren = True
+        elif token == ')':
+            stack[-2].append(stack.pop(-1))
+            stack.append([])
+        # last_token_is_or = False if i == 0 else tokens[i - 1] == '|'
+        # # if last_token_is_or:
+        # #     stack[-1][-1] = [stack[-1][-1]]
+        # if not last_token_is_or and i > 0 and len(stack[-1]) > 0:
+        #     stack[-1][-1] = [stack[-1][-1]]
+        print(stack)
+    # stack[-2].append(stack.pop(-1))
+    return stack
+
+
+def parse_tokenized_regex(tokens):
+    stack = []
+    level = 0
+    is_first = True
+    for i, token in enumerate(tokens):
+        last_token_is_or = False if i == 0 else tokens[i - 1] == '|'
+        if token not in '(){}|':
+            if is_first:
+                stack.append(token)
+                stack.append([])
+                is_first = False
+            else:
+                stack[-1].append(token)
+        elif token == '(':
+            level += 1
+            if not last_token_is_or and i > 1 and len(stack[-1]) > 0:
+                stack[-1][-1] = [stack[-1][-1]]
+            stack.append([])
+        elif token == ')':
+            level -= 1
+            stack[-2].append(stack.pop(-1))
+            stack.append([])
+        print(stack)
+    return stack
+
+
+
+def parse_tokenized_regex(tokens):
+    stack = []
+    level = 0
+    is_first = True
+    for i, token in enumerate(tokens):
+
+        last_token_is_or = False if i == 0 else tokens[i - 1] == '|'
+        if level == 0 and last_token_is_or:
+            stack.append([])
+        if last_token_is_or and level == 0:
+            # stack.append([])
+            print('da token is:::', token)
+        if token not in '(){}|':
+            if is_first:
+                print('IS FIRST!', token)
+                stack.append(token)
+                stack.append([])
+                is_first = False
+            else:
+                stack[-1].append(token)
+        elif token == '(':
+            level += 1
+            # if not last_token_is_or and i > 1 and len(stack[-1]) > 0:
+            #     print(stack[-1])
+            #     stack[-1][-1] = [stack[-1][-1]]
+            if len(stack[-1]) > 0:
+                stack.append([])
+        elif token == ')':
+            level -= 1
+            stack[-2].append(stack.pop(-1))
+        if not last_token_is_or and i > 1 and len(stack[-1]) > 0:
+            stack[-1][-1] = [stack[-1][-1]]
+        print(stack)
+    return stack
+
+
+lists = []
+l = [[]]
+for token in u:
+    if token == '(':
+        l.append([])
+        continue
+    if token == ')':
+        l.append([])
+        continue
+    l[-1].append(token)
+print(l)
+
+
+
+
+
+
+
+
+def to_left(list_dict):
+    for key, tokens in list_dict.items():
+        new_tokens = [[]]
+        curr_type = 'UNION'
+        for token in tokens:
+            if token != '|':
+                if len(new_tokens[-1]) != 1:
+                    new_tokens.append([[]])
+                new_tokens[-1][0].append(token)
+            else:
+                curr_type = 'UNION'
+                if len(new_tokens[-1]) != 2:
+                    new_tokens[-1].append('UNION')
+
+
+
+def evaluate_group(tokens, list_dict):
+    # print('WAS', tokens)
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if type(t) is str and regex.match(range_regex, t):
+            range_tokens = list(map(int, regex.findall(r'\d+', t)))
+            the_range = range(range_tokens[0], range_tokens[1] + 1)
+            token_to_repeat = list_dict[tokens[i - 1]]
+            repeated = [[''] if n == 0 else token_to_repeat * n for n in the_range]
+            tokens.pop(i)
+            # if type(tokens[i - 1]) is list:
+            #     print('OMG')
+            #     max_key = max(list_dict.keys())
+            #     list_dict[max_key + 1] = tokens[i - 1]
+            #     tokens[i - 1] = max_key + 1
+            list_dict[tokens[i - 1]] = repeated
+            # print('repeated', repeated)
+            continue
+        i += 1
+
+    for i, t in enumerate(tokens):
+        if type(t) is int:
+            tokens[i] = list_dict[t]
+        if type(t) is str and len(t) == 2 and t[0] == backslash:
+            tokens[i] = t[1]
+    # print('NOW IS', tokens)
+    # print('DICT INTERMEDIATE', list_dict)
+    tokens = regex_product(tokens)
+    # print('DICT', list_dict)
+    return tokens
+
+
+
+def possibilities(list_dict):
+    keys = sorted(list_dict.keys(), reverse=True)
+    for key in keys:
+        tokens = list_dict[key]
+        # tokens = [t if type(t) is not int else list_dict[t] for t in tokens]
+        if '|' in tokens:
+            tokens = [token for token in tokens if token != '|']
+            tokens = [evaluate_group(t, list_dict) for t in tokens]
+        else:
+            # tokens = [t if type(t) is not int else list_dict[t] for t in tokens]
+            tokens = evaluate_group(tokens, list_dict)
+        list_dict[key] = tokens
+        print(list_dict, key)
+    poss = list_dict[keys[-1]]
+    if len(poss) > 0 and type(poss[0]) is list:
+        return list(flatten(poss))
+    return poss
