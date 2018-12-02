@@ -79,11 +79,8 @@ def tokenize_regex(s, group_char_ranges=True):
     pattern = rf'{range_regex}|{crange}[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     tokens = regex.findall(pattern, s)
     for i, (a, b) in enumerate(zip(tokens, tokens[1:])):
-        if regex.match(r'\\[|(){}?*+[\]]', a + b): # put r'\\[|(){}?*+[\]\.]' ?
+        if regex.match(r'\\[|(){}?*+[\]\\]', a + b):
             tokens[i] = a + b
-            tokens[i + 1] = ''
-        elif regex.match(r'\\\\', a + b):
-            tokens[i] = a
             tokens[i + 1] = ''
     tokens = [token for token in tokens if token != '']
     print(tokens)
