@@ -1,5 +1,4 @@
 import regex
-import re
 from itertools import product, chain
 import cProfile
 
@@ -41,18 +40,41 @@ def is_valid_regex(input):
 
 def replace_metas(s):
 
-    # (?<=(?<!\\)\[(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*\])
-    # (?<=(?:(?<!(?<!\\)\\)\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*\])
-    # (?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*\])
-    # (?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))
-    # >>   (?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(?:\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))
-    # expanded
-    # (?<=(?:(?<!(?<!\\)\\)\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(?:\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:(?<!(?<!\\)\\)\]))
+    toks = regex.findall(f'{char_range}|.', s)
+    print(toks)
+    # same line found in replace_char_range function
+    # pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|(?:[^\]\\]|\\[\]\-\\^])'
+    
+    both = r'\\W|\\D|\\S|.'
+    yes = r'\\W|\\D|\\S'
+    for i, tok in enumerate(toks):
+        if regex.match(char_range, tok):
+            contents = tok[1:-1]
+            if regex.search(yes, contents):
+                subtoks = regex.findall(both, contents)
+                specials = []
+                regulars = []
+                for subtok in subtoks:
+                    if regex.match(yes, subtok):
+                        specials.append(subtok)
+                    else:
+                        regulars.append(subtok)
+                regular_part = f'[{"".join(regulars)}]'
+                special_part = '|'.join(specials)
+                stra = []
+                if len(regular_part) != 2:
+                    stra += [regular_part]
+                if len(special_part) != 0:
+                    stra += [special_part]
+                toks[i] = rf'({"|".join(stra)})'
+                # toks[i] = rf'({regular_part}|{special_part})'
+                # print('yipee', toks[i])
+    s = ''.join(toks)
+
 
     before_charrange_part = rf'(?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)'
     after_charrange_part  = rf'(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))'
     
-    # s = regex.sub(rf'{before_charrange_part}({no_bs}\\w){after_charrange_part}', 'A-Za-z0-9_', s) # i beleive don't need {no_bs} before \\w
     s = regex.sub(rf'{before_charrange_part}\\w{after_charrange_part}', 'A-Za-z0-9_', s)
     s = regex.sub(rf'{before_charrange_part}\\d{after_charrange_part}', '0-9', s)
     s = regex.sub(rf'{before_charrange_part}\\s{after_charrange_part}', r'\\f\\n\\r\\t\\v', s)
@@ -73,10 +95,15 @@ def replace_metas(s):
 
     # s = regex.sub(rf'(?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)\[((?:[^\]\\]|\\.)+)\](?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))', lambda x: f'{x.group(1)}', s)
 
+    
+
+
     s = regex.sub(rf'{no_bs}\*', '{0,}', s)
     s = regex.sub(rf'{no_bs}\+', '{1,}', s)
     s = regex.sub(rf'(?<!{bs}|{range_regex})\?(?=\?)', '{0,1}', s)
     s = regex.sub(rf'(?<!{bs}|{range_regex})\?', '{0,1}', s)
+    
+    print('OMG Y', [s])
     return s
 
 
@@ -129,6 +156,7 @@ def clean_up(input):
     input = replace_char_ranges(input)
     input = r''.join(input)
     input = tokenize_regex(input, False)
+    print(input, 'inNNNNN')
 
     i = 0
     while i < len(input):
@@ -155,6 +183,9 @@ def clean_up(input):
                     i += 3
                     continue
         i += 1
+    
+
+    print(input, 'inNWWWWNNNN')
     return input
 
 
@@ -272,7 +303,9 @@ def possibilities(list_dict):
 def regex_possibilities(s):
     s = clean_up(s)
     s = tokens_to_dict(s)
+    print('reREWALLLLLLLLLLLLal', s)
     s = group_or_operands(s)
+    print('reREWALLLLLLLLLLLLal', s)
     return possibilities(s)
 
 
@@ -288,11 +321,15 @@ def do_a_test():
     null = {''.join(x) for x in prod}
     assert null == com
 
-test = r'[\W]' # ^, -, ] or \
-print([test])
+# test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
+test = r'i[\S ]'
+test = r'((a|v|d)| )'
+# (?# test = r'([abc]|(d|e))')
+# print([test])
 result = regex_possibilities(test)
+
 print(sorted(result))
-print(len(result))
+# print(len(result))
 
 
 # s = b'426c616168'
