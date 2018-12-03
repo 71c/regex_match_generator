@@ -12,22 +12,12 @@ def flatten(listOfLists):
 bs = r'(?<!\\)\\'
 no_bs = rf'(?<!{bs})'
 range_regex = rf'{no_bs}\{{(?:\d+,?\d*|,\d+){no_bs}\}}'
-# char_range = rf'(?:{no_bs}\[)[^\[\]]+(?:{no_bs}\])'
-char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\[\]\-\\^])+(?:{no_bs}\])'
+# char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\[\]\-\\^])+(?:{no_bs}\])'
+char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\.)+(?:{no_bs}\])'
+# (?:[^\]\\]|\\.)+
 backslash = r'\e'[0]
 
-# \[([^\]\\]|\\[\]\-\\^])+\]
-
-# metas = r'[\|\(\)\?\*\+\{\}\.\[\]]'
-# metas = r'(\[|\]|\\|\||\(|\)|\?|\*|\+|\{|\}|\.)'
-# metas = r'(\[|\]|\\|\||\(|\)|\?|\*|\+|\{|\}|\.)'
 metas = r'[|(){}?*+[\]\.\\]'
-# metas = r'\\|[|(){}?*+[\].]'
-#
-# all_chars = ''.join(chr(i) for i in range(43, 92))
-# all_chars = regex.sub(metas, lambda x: rf'{backslash}{x.group()}', all_chars)
-# all_chars = r'[' + all_chars + r']'
-
 
 def make_excluded_char_range(excluded_chars):
     all_chars = [chr(i) for i in range(0, 128)] # not LF or CR (\n or \r)
@@ -39,10 +29,6 @@ def make_excluded_char_range(excluded_chars):
 
 dot_chars = make_excluded_char_range(['\n', '\r'])
 dot_chars = regex.sub(r'\\\\', r'\\\\\\\\', dot_chars)
-print(dot_chars)
-
-# all_chars = r'(\\\\)'
-
 
 
 def is_valid_regex(input):
@@ -55,9 +41,23 @@ def is_valid_regex(input):
 
 def replace_metas(s):
 
-    # s = regex.sub(rf'{no_bs}\.', '\\w', s)
+    # (?<=(?<!\\)\[(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*\])
+    # (?<=(?:(?<!(?<!\\)\\)\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*\])
+    # (?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*\])
+    # (?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))
+    # >>   (?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(?:\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))
+    # expanded
+    # (?<=(?:(?<!(?<!\\)\\)\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)(?:\[(?:[^\]\\]|\\.)+\])(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:(?<!(?<!\\)\\)\]))
+
+    before_charrange_part = rf'(?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)'
+    after_charrange_part  = rf'(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))'
+    
+    # s = regex.sub(rf'{before_charrange_part}({no_bs}\\w){after_charrange_part}', 'A-Za-z0-9_', s) # i beleive don't need {no_bs} before \\w
+    s = regex.sub(rf'{before_charrange_part}\\w{after_charrange_part}', 'A-Za-z0-9_', s)
+    s = regex.sub(rf'{before_charrange_part}\\d{after_charrange_part}', '0-9', s)
+    s = regex.sub(rf'{before_charrange_part}\\s{after_charrange_part}', r'\\f\\n\\r\\t\\v', s)
+
     s = regex.sub(rf'{no_bs}\.', dot_chars, s)
-    print('BEFORE', s)
     s = regex.sub(rf'{no_bs}\\w', '[A-Za-z0-9_]', s)
     s = regex.sub(rf'{no_bs}\\W', '[^A-Za-z0-9_]', s)
     s = regex.sub(rf'{no_bs}\\d', '[0-9]', s)
@@ -71,37 +71,32 @@ def replace_metas(s):
     s = regex.sub(rf'{no_bs}\\v', '\v', s)
     s = regex.sub(rf'{no_bs}\\a', '\a', s)
 
+    # s = regex.sub(rf'(?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)\[((?:[^\]\\]|\\.)+)\](?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))', lambda x: f'{x.group(1)}', s)
+
     s = regex.sub(rf'{no_bs}\*', '{0,}', s)
     s = regex.sub(rf'{no_bs}\+', '{1,}', s)
     s = regex.sub(rf'(?<!{bs}|{range_regex})\?(?=\?)', '{0,1}', s)
     s = regex.sub(rf'(?<!{bs}|{range_regex})\?', '{0,1}', s)
-    print(s, 'IIIIII')
     return s
 
 
 def tokenize_regex(s, group_char_ranges=True):
-    print(s)
     pattern = rf'{range_regex}|{char_range}|[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     crange = char_range + '|' if group_char_ranges else ''
     pattern = rf'{range_regex}|{crange}[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     tokens = regex.findall(pattern, s)
-    print('tokenss', tokens)
     for i, (a, b) in enumerate(zip(tokens, tokens[1:])):
         if regex.match(r'\\[(){}?*+[\]\.\\|]', a + b):
             tokens[i] = a + b
             tokens[i + 1] = ''
     tokens = [token for token in tokens if token != '']
-    print(tokens)
     return tokens
 
 
 def replace_char_range(char_range):
-    # pattern = rf'{no_bs}[\[|\]]|[^-]-[^-\]]|.'
+    print(char_range)
     pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|(?:[^\]\\]|\\[\]\-\\^])'
-    # [^\]\\]|\\[\]\-\\^]
-    # [^ \] \\] | \\ [\] \- \\ ^]
     sub_tokens = regex.findall(pattern, char_range[1:-1])
-    print('before', sub_tokens)
     new_sub_tokens = []
     for i, sub_token in enumerate(sub_tokens):
         if len(sub_token) == 3:
@@ -114,11 +109,8 @@ def replace_char_range(char_range):
         else:
             new_sub_tokens.append(sub_token)
     if new_sub_tokens[0] == '^':
-        print(new_sub_tokens)
         new_sub_tokens = make_excluded_char_range(new_sub_tokens[1:])
-        print(new_sub_tokens)
         return new_sub_tokens
-    print(new_sub_tokens)
     return f"({'|'.join(new_sub_tokens)})"
 
 
@@ -296,7 +288,8 @@ def do_a_test():
     null = {''.join(x) for x in prod}
     assert null == com
 
-test = r'.' # ^, -, ] or \
+test = r'[\W]' # ^, -, ] or \
+print([test])
 result = regex_possibilities(test)
 print(sorted(result))
 print(len(result))
