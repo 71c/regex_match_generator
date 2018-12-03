@@ -32,12 +32,8 @@ print(all_chars)
 print(len(all_chars))
 all_chars = r'|'.join(a for a in all_chars)
 all_chars = r'(' + all_chars + r')'
-# all_chars = '(U|V|W|X|Y|Z|[|\\|\\|]|^|_)'
-# r'|Z|\[|\|\]|^'
-# \|  Z  \|  \[  \|  \|  \]  \|  \^
-# \|  Z  \|  \[  \|  \\ \|  \]  \|  \^
-# all_chars = regex.sub(r'\|Z\|\[\|\|\]\|\^', '|Z|\\[|\\\\|\\]|^', all_chars)
-all_chars = regex.sub(r'\|Z\|\[\|\|\]\|\^', r'\|  Z  \|  \[  \|  \\ \|  \]  \|  \^', all_chars)
+
+all_chars = regex.sub(r'\\\\', r'\\\\\\', all_chars)
 
 print([all_chars])
 
@@ -82,35 +78,14 @@ def tokenize_regex(s, group_char_ranges=True):
     print(s)
     pattern = rf'{range_regex}|{char_range}|[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     crange = char_range + '|' if group_char_ranges else ''
-    # pattern = rf'{range_regex}|{crange}[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
-    pattern = rf'{range_regex}|{crange}(?:[|()?*+{{}}]|\\)|[^|(){{}}\\?*+]'
-    # pattern = rf'{range_regex}|{crange}(\(|\)|\\|\?|\*|\+|\{{|\}})|[^|(){{}}\\?*+]'
+    pattern = rf'{range_regex}|{crange}[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     tokens = regex.findall(pattern, s)
     print(tokens)
 
     for i, (a, b) in enumerate(zip(tokens, tokens[1:])):
-        # if regex.match(r'\\[|(){}?*+[\]\\\.]', a + b):
-        #     tokens[i] = a + b
-        #     tokens[i + 1] = ''
-        # if regex.match(r'\\[|(){}?*+[\]\.\\]', a + b):
         if regex.match(r'\\[(){}?*+[\]\.\\|]', a + b):
-            print(a, b)
             tokens[i] = a + b
             tokens[i + 1] = ''
-    # print(tokens)
-    # for i, (a, b) in enumerate(zip(tokens, tokens[1:])):
-    #     if regex.match(r'\\\|', a + b):
-    #         print(a, b, i)
-    #         tokens[i] = a + b
-    #         tokens[i + 1] = ''
-
-    # i = 0
-    # for a, b in zip(tokens, tokens[1:]):
-    #     if regex.match(r'\\[(){}?*+[\]\\\.]', a + b) and len(a) == 1 and len(b) == 1:
-    #         print(a, b)
-    #         tokens[i] = a + b
-    #         tokens[i + 1] = ''
-    #     i += 1
     tokens = [token for token in tokens if token != '']
     print('TOKZ', tokens)
     return tokens
