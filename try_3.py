@@ -1,4 +1,5 @@
 import regex
+import re
 from itertools import product, chain
 import cProfile
 
@@ -31,15 +32,16 @@ metas = r'[|(){}?*+[\]\.\\]'
 def make_excluded_char_range(excluded_chars):
     all_chars = [chr(i) for i in range(0, 128)] # not LF or CR (\n or \r)
     all_chars = [c for c in all_chars if c not in excluded_chars]
-    all_chars = [regex.sub(metas, lambda x: rf'\{x.group(0)}', q) for q in all_chars]
-    all_chars = r'|'.join(a for a in all_chars)
-    all_chars = r'(' + all_chars + r')'
+    all_chars = [regex.sub(metas, lambda x: rf'\\{x.group(0)}', q) for q in all_chars]
+    all_chars = '|'.join(a for a in all_chars)
+    all_chars = '(' + all_chars + ')'
     print(all_chars)
     # all_chars = regex.sub(r'\\\\', r'\\\\\\', all_chars)
+    # print(all_chars)
     return all_chars
 
 dot_chars = make_excluded_char_range(['\n', '\r'])
-
+print(dot_chars)
 
 # all_chars = r'(\\\\)'
 
@@ -53,36 +55,43 @@ def is_valid_regex(input):
         return False
 
 
-def replace_metas(input):
-    # input = regex.sub(rf'{no_bs}\.', '\\w', input)
-    input = regex.sub(rf'{no_bs}\.', dot_chars, input)
-    input = regex.sub(rf'{no_bs}\\w', '[A-Za-z0-9_]', input)
-    input = regex.sub(rf'{no_bs}\\W', '[^A-Za-z0-9_]', input)
-    input = regex.sub(rf'{no_bs}\\d', '[0-9]', input)
-    input = regex.sub(rf'{no_bs}\\D', '[^0-9]', input)
-    input = regex.sub(rf'{no_bs}\\s', r'[\\f\\n\\r\\t\\v]', input)
-    input = regex.sub(rf'{no_bs}\\S', r'[^\\f\\n\\r\\t\\v]', input)
-    input = regex.sub(rf'{no_bs}\\f', '\f', input)
-    input = regex.sub(rf'{no_bs}\\n', '\n', input)
-    input = regex.sub(rf'{no_bs}\\r', '\r', input)
-    input = regex.sub(rf'{no_bs}\\t', '\t', input)
-    input = regex.sub(rf'{no_bs}\\v', '\v', input)
-    input = regex.sub(rf'{no_bs}\\a', '\a', input)
+def replace_metas(s):
 
-    input = regex.sub(rf'{no_bs}\*', '{0,}', input)
-    input = regex.sub(rf'{no_bs}\+', '{1,}', input)
-    input = regex.sub(rf'(?<!{bs}|{range_regex})\?(?=\?)', '{0,1}', input)
-    input = regex.sub(rf'(?<!{bs}|{range_regex})\?', '{0,1}', input)
+    # s = regex.sub(rf'{no_bs}\.', '\\w', s)
+    s = regex.sub(rf'{no_bs}\.', dot_chars, s)
+    # tokz = regex.findall(r'.', s)
+    # for i, tok in enumerate(tokz):
+    #     if 
+    # s = dot_chars
+    print('BEFORE', s)
+    s = regex.sub(rf'{no_bs}\\w', '[A-Za-z0-9_]', s)
+    s = regex.sub(rf'{no_bs}\\W', '[^A-Za-z0-9_]', s)
+    s = regex.sub(rf'{no_bs}\\d', '[0-9]', s)
+    s = regex.sub(rf'{no_bs}\\D', '[^0-9]', s)
+    s = regex.sub(rf'{no_bs}\\s', r'[\\f\\n\\r\\t\\v]', s)
+    s = regex.sub(rf'{no_bs}\\S', r'[^\\f\\n\\r\\t\\v]', s)
+    s = regex.sub(rf'{no_bs}\\f', '\f', s)
+    s = regex.sub(rf'{no_bs}\\n', '\n', s)
+    s = regex.sub(rf'{no_bs}\\r', '\r', s)
+    s = regex.sub(rf'{no_bs}\\t', '\t', s)
+    s = regex.sub(rf'{no_bs}\\v', '\v', s)
+    s = regex.sub(rf'{no_bs}\\a', '\a', s)
 
-    return input
+    s = regex.sub(rf'{no_bs}\*', '{0,}', s)
+    s = regex.sub(rf'{no_bs}\+', '{1,}', s)
+    s = regex.sub(rf'(?<!{bs}|{range_regex})\?(?=\?)', '{0,1}', s)
+    s = regex.sub(rf'(?<!{bs}|{range_regex})\?', '{0,1}', s)
+    print(s, 'IIIIII')
+    return s
 
 
 def tokenize_regex(s, group_char_ranges=True):
+    print(s)
     pattern = rf'{range_regex}|{char_range}|[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     crange = char_range + '|' if group_char_ranges else ''
     pattern = rf'{range_regex}|{crange}[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     tokens = regex.findall(pattern, s)
-
+    print('tokenss', tokens)
     for i, (a, b) in enumerate(zip(tokens, tokens[1:])):
         if regex.match(r'\\[(){}?*+[\]\.\\|]', a + b):
             tokens[i] = a + b
