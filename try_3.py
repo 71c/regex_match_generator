@@ -32,15 +32,13 @@ metas = r'[|(){}?*+[\]\.\\]'
 def make_excluded_char_range(excluded_chars):
     all_chars = [chr(i) for i in range(0, 128)] # not LF or CR (\n or \r)
     all_chars = [c for c in all_chars if c not in excluded_chars]
-    all_chars = [regex.sub(metas, lambda x: rf'\\{x.group(0)}', q) for q in all_chars]
+    all_chars = [regex.sub(metas, lambda x: rf'\{x.group(0)}', q) for q in all_chars]
     all_chars = '|'.join(a for a in all_chars)
     all_chars = '(' + all_chars + ')'
-    print(all_chars)
-    # all_chars = regex.sub(r'\\\\', r'\\\\\\', all_chars)
-    # print(all_chars)
     return all_chars
 
 dot_chars = make_excluded_char_range(['\n', '\r'])
+dot_chars = regex.sub(r'\\\\', r'\\\\\\\\', dot_chars)
 print(dot_chars)
 
 # all_chars = r'(\\\\)'
@@ -59,10 +57,6 @@ def replace_metas(s):
 
     # s = regex.sub(rf'{no_bs}\.', '\\w', s)
     s = regex.sub(rf'{no_bs}\.', dot_chars, s)
-    # tokz = regex.findall(r'.', s)
-    # for i, tok in enumerate(tokz):
-    #     if 
-    # s = dot_chars
     print('BEFORE', s)
     s = regex.sub(rf'{no_bs}\\w', '[A-Za-z0-9_]', s)
     s = regex.sub(rf'{no_bs}\\W', '[^A-Za-z0-9_]', s)
@@ -122,6 +116,7 @@ def replace_char_range(char_range):
     if new_sub_tokens[0] == '^':
         print(new_sub_tokens)
         new_sub_tokens = make_excluded_char_range(new_sub_tokens[1:])
+        print(new_sub_tokens)
         return new_sub_tokens
     print(new_sub_tokens)
     return f"({'|'.join(new_sub_tokens)})"
