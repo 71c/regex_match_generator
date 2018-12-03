@@ -1,7 +1,6 @@
 import regex
 from itertools import product, chain
 import cProfile
-import random
 
 
 def flatten(listOfLists):
@@ -12,8 +11,11 @@ def flatten(listOfLists):
 bs = r'(?<!\\)\\'
 no_bs = rf'(?<!{bs})'
 range_regex = rf'{no_bs}\{{(?:\d+,?\d*|,\d+){no_bs}\}}'
-char_range = rf'(?:{no_bs}\[)[^\[\]]+(?:{no_bs}\])'
-backslash = r'\e' [0]
+# char_range = rf'(?:{no_bs}\[)[^\[\]]+(?:{no_bs}\])'
+char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\[\]\-\\^])+(?:{no_bs}\])'
+backslash = r'\e'[0]
+
+# \[([^\]\\]|\\[\]\-\\^])+\]
 
 # metas = r'[\|\(\)\?\*\+\{\}\.\[\]]'
 # metas = r'(\[|\]|\\|\||\(|\)|\?|\*|\+|\{|\}|\.)'
@@ -25,17 +27,18 @@ metas = r'[|(){}?*+[\]\.\\]'
 # all_chars = regex.sub(metas, lambda x: rf'{backslash}{x.group()}', all_chars)
 # all_chars = r'[' + all_chars + r']'
 
-all_chars = [chr(i) for i in range(0, 128)]
-all_chars = [regex.sub(metas, lambda x: f'\{x.group(0)}', q) for q in all_chars]
-# random.shuffle(all_chars)
-print(all_chars)
-print(len(all_chars))
-all_chars = r'|'.join(a for a in all_chars)
-all_chars = r'(' + all_chars + r')'
 
-all_chars = regex.sub(r'\\\\', r'\\\\\\', all_chars)
+def make_excluded_char_range(excluded_chars):
+    all_chars = [chr(i) for i in range(0, 128)] # not LF or CR (\n or \r)
+    all_chars = [c for c in all_chars if c not in excluded_chars]
+    all_chars = [regex.sub(metas, lambda x: rf'\{x.group(0)}', q) for q in all_chars]
+    all_chars = r'|'.join(a for a in all_chars)
+    all_chars = r'(' + all_chars + r')'
+    print(all_chars)
+    # all_chars = regex.sub(r'\\\\', r'\\\\\\', all_chars)
+    return all_chars
 
-print([all_chars])
+dot_chars = make_excluded_char_range(['\n', '\r'])
 
 
 # all_chars = r'(\\\\)'
@@ -52,7 +55,7 @@ def is_valid_regex(input):
 
 def replace_metas(input):
     # input = regex.sub(rf'{no_bs}\.', '\\w', input)
-    input = regex.sub(rf'{no_bs}\.', all_chars, input)
+    input = regex.sub(rf'{no_bs}\.', dot_chars, input)
     input = regex.sub(rf'{no_bs}\\w', '[A-Za-z0-9_]', input)
     input = regex.sub(rf'{no_bs}\\W', '[^A-Za-z0-9_]', input)
     input = regex.sub(rf'{no_bs}\\d', '[0-9]', input)
@@ -75,33 +78,44 @@ def replace_metas(input):
 
 
 def tokenize_regex(s, group_char_ranges=True):
-    print(s)
     pattern = rf'{range_regex}|{char_range}|[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     crange = char_range + '|' if group_char_ranges else ''
     pattern = rf'{range_regex}|{crange}[|()\\?*+{{}}]|[^|(){{}}\\?*+]'
     tokens = regex.findall(pattern, s)
-    print(tokens)
 
     for i, (a, b) in enumerate(zip(tokens, tokens[1:])):
         if regex.match(r'\\[(){}?*+[\]\.\\|]', a + b):
             tokens[i] = a + b
             tokens[i + 1] = ''
     tokens = [token for token in tokens if token != '']
-    print('TOKZ', tokens)
+    print(tokens)
     return tokens
 
 
 def replace_char_range(char_range):
-    pattern = rf'{no_bs}[\[|\]]|[^-]-[^-\]]|.'
-    sub_tokens = regex.findall(pattern, char_range)[1:-1]
+    # pattern = rf'{no_bs}[\[|\]]|[^-]-[^-\]]|.'
+    pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|(?:[^\]\\]|\\[\]\-\\^])'
+    # [^\]\\]|\\[\]\-\\^]
+    # [^ \] \\] | \\ [\] \- \\ ^]
+    sub_tokens = regex.findall(pattern, char_range[1:-1])
+    print('before', sub_tokens)
+    new_sub_tokens = []
     for i, sub_token in enumerate(sub_tokens):
         if len(sub_token) == 3:
             min_num = ord(sub_token[0])
             max_num = ord(sub_token[2])
             all_chars = map(chr, range(min_num, max_num + 1))
             all_chars = [x if x != '\\' else r'\\' for x in all_chars]
-            sub_tokens[i] = '|'.join(all_chars)
-    return f"({'|'.join(sub_tokens)})"
+            for c in all_chars:
+                new_sub_tokens.append(c)
+        else:
+            new_sub_tokens.append(sub_token)
+    if new_sub_tokens[0] == '^':
+        print(new_sub_tokens)
+        new_sub_tokens = make_excluded_char_range(new_sub_tokens[1:])
+        return new_sub_tokens
+    print(new_sub_tokens)
+    return f"({'|'.join(new_sub_tokens)})"
 
 
 def replace_char_ranges(tokens):
@@ -117,9 +131,7 @@ def clean_up(input):
     input = replace_metas(input)
     input = tokenize_regex(input)
     input = replace_char_ranges(input)
-    print(input, 'testssss')
     input = r''.join(input)
-    print([input], 'stett')
     input = tokenize_regex(input, False)
 
     i = 0
@@ -271,16 +283,20 @@ def regex_possibilities(s):
 # test = r'bu|[rn]t|[coy]e|[mtg]a|j|iso|n[hl]|[ae]d|lev|sh|[lnd]i|[po]o|ls'
 # test = r'a.a|i..n|j|oo|a.t|i..o|a..i|bu|n.e|ay.|r.e|po|ma|nd'
 # test = r'...'
-test = r'[^a]'
-test = r'.'
-# test = r'\['
-com = regex_possibilities(test)
-for a in com:
-    if len(a) != 1:
-        print(a)
-print(len(com))
 
-print(sorted(com))
+def do_a_test():
+    test = '.alo[oefag]n.\\+'
+    com = regex_possibilities(test)
+    dot = tuple(map(chr, range(0, 128)))
+    prod = product(dot, ('alo',), ('o', 'e', 'f', 'a', 'g'), ('n',), dot, ('+',))
+    null = {''.join(x) for x in prod}
+    assert null == com
+
+test = r'.' # ^, -, ] or \
+result = regex_possibilities(test)
+print(sorted(result))
+print(len(result))
+
 
 # s = b'426c616168'
 
