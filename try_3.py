@@ -239,7 +239,6 @@ def regex_product(tokens):
             if len(token) > 0 and type(token[0]) is list:
                 tokens[i] = list(flatten(token))
 
-
         poss = [''.join(flatten(x)) for x in product(*tokens)]
     if poss == []:
         poss = ['']
@@ -247,6 +246,23 @@ def regex_product(tokens):
 
 
 def evaluate_group(tokens, list_dict):
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if type(t) is str and regex.match(range_regex, t):
+            the_range = range_token_to_range(t)
+            repeated = [[tokens[i - 1]] * n for n in the_range]
+            for j in range(1, len(repeated) * 2 - 1, 2):
+                repeated.insert(j, '|')
+            repeated = evaluate(repeated, list_dict)
+            repeated = list(flatten(repeated))
+            tokens.pop(i)
+            new_key = max(list_dict.keys()) + 1
+            list_dict[new_key] = repeated
+            tokens[i - 1] = new_key
+            continue
+        i += 1
+    
     for i, t in enumerate(tokens):
         if type(t) is int:
             tokens[i] = list_dict[t]
@@ -282,45 +298,12 @@ def possibilities(list_dict):
 
     for key in keys:
         tokens = list_dict[key]
-
-        i = 0
-        while i < len(tokens):
-            t = tokens[i]
-            if type(t) is str and regex.match(range_regex, t):
-                the_range = range_token_to_range(t)
-                repeated = [[tokens[i - 1]] * n for n in the_range]
-                for j in range(1, len(repeated) * 2 - 1, 2):
-                    repeated.insert(j, '|')
-                repeated = evaluate(repeated, list_dict)
-                repeated = list(flatten(repeated))
-                tokens.pop(i)
-                new_key = max(list_dict.keys()) + 1
-                list_dict[new_key] = repeated
-                tokens[i - 1] = new_key
-                continue
-            i += 1
         print(tokens)
         
         tokens = evaluate(tokens, list_dict)
-        
-        # if len(tokens) > 0 and type(tokens[0]) is list:
-            # tokens = list(flatten(tokens))
-            # tokens = [''.join(t) for t in tokens]
-            # tokens = list(flatten(tokens))
-        # if len(tokens) > 0 and all(type(x) is list for x in tokens):
-        #     print(tokens, 'HOIHOHO')
-        #     tokens = list(flatten(tokens))
-        # if len(tokens) > 0 and all(type(x) is list for x in tokens):
-        #     print(tokens, 'HOIHOHO')
-        #     tokens = [[x] for x in list(flatten(tokens))]
-        # if len(tokens) > 0 and all(type(x) is list for x in tokens):
-        #     print(tokens, 'HOIHOHO')
-        #     tokens = [[x] for x in list(flatten(tokens))]
-        #     # tokens = [[''.join(x)] for x in tokens]
-
 
         list_dict[key] = tokens
-        print(list_dict)
+        # print(list_dict)
     poss = list_dict[keys[-1]]
     if len(poss) > 0 and type(poss[0]) is list:
         poss = list(flatten(poss))
@@ -331,9 +314,9 @@ def possibilities(list_dict):
 def regex_possibilities(s):
     s = clean_up(s)
     s = tokens_to_dict(s)
-    print('reREWALLLLLLLLLLLLal', s)
+    # print('reREWALLLLLLLLLLLLal', s)
     s = group_or_operands(s)
-    print('reREWALLLLLLLLLLLLal', s)
+    # print('reREWALLLLLLLLLLLLal', s)
     return possibilities(s)
 
 
@@ -352,7 +335,9 @@ def do_a_test():
 # test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
 # test = r'[\SA-Z]P'
 # test = r'((a|b)|c) '
-test = r'([abc]|AASSSD?DFF|(e|on))vo'
+# test = r'([abc]|AASSSD?DFF|(e|on))vo'
+# test = r'(D?D|u)vo'
+test = r'a?'
 # test = r'm?'
 # print([test])
 result = regex_possibilities(test)
