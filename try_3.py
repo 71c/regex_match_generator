@@ -1,6 +1,5 @@
 import regex
 from itertools import product, chain
-import cProfile
 
 
 def flatten(listOfLists):
@@ -11,9 +10,7 @@ def flatten(listOfLists):
 bs = r'(?<!\\)\\'
 no_bs = rf'(?<!{bs})'
 range_regex = rf'{no_bs}\{{(?:\d+,?\d*|,\d+){no_bs}\}}'
-# char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\[\]\-\\^])+(?:{no_bs}\])'
 char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\.)+(?:{no_bs}\])'
-# (?:[^\]\\]|\\.)+
 backslash = r'\e'[0]
 
 metas = r'[|(){}?*+[\]\.\\]'
@@ -30,21 +27,16 @@ dot_chars = make_excluded_char_range(['\n', '\r'])
 dot_chars = regex.sub(r'\\\\', r'\\\\\\\\', dot_chars)
 
 
-def is_valid_regex(input):
+def is_valid_regex(s):
     try:
-        regex.compile(input)
+        regex.compile(s)
         return True
     except regex.error:
         return False
 
 
 def replace_metas(s):
-
     toks = regex.findall(f'{char_range}|.', s)
-    print(toks)
-    # same line found in replace_char_range function
-    # pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|(?:[^\]\\]|\\[\]\-\\^])'
-    
     both = r'\\W|\\D|\\S|.'
     yes = r'\\W|\\D|\\S'
     for i, tok in enumerate(toks):
@@ -67,10 +59,7 @@ def replace_metas(s):
                 if len(special_part) != 0:
                     stra += [special_part]
                 toks[i] = rf'({"|".join(stra)})'
-                # toks[i] = rf'({regular_part}|{special_part})'
-                # print('yipee', toks[i])
     s = ''.join(toks)
-
 
     before_charrange_part = rf'(?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)'
     after_charrange_part  = rf'(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))'
@@ -93,17 +82,11 @@ def replace_metas(s):
     s = regex.sub(rf'{no_bs}\\v', '\v', s)
     s = regex.sub(rf'{no_bs}\\a', '\a', s)
 
-    # s = regex.sub(rf'(?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)\[((?:[^\]\\]|\\.)+)\](?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))', lambda x: f'{x.group(1)}', s)
-
-    
-
-
     s = regex.sub(rf'{no_bs}\*', '{0,}', s)
     s = regex.sub(rf'{no_bs}\+', '{1,}', s)
     s = regex.sub(rf'(?<!{bs}|{range_regex})\?(?=\?)', '{0,1}', s)
     s = regex.sub(rf'(?<!{bs}|{range_regex})\?', '{0,1}', s)
     
-    print('OMG Y', [s])
     return s
 
 
@@ -121,7 +104,6 @@ def tokenize_regex(s, group_char_ranges=True):
 
 
 def replace_char_range(char_range):
-    print(char_range)
     pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|(?:[^\]\\]|\\[\]\-\\^])'
     sub_tokens = regex.findall(pattern, char_range[1:-1])
     new_sub_tokens = []
@@ -148,19 +130,18 @@ def replace_char_ranges(tokens):
     return tokens
 
 
-def clean_up(input):
-    if not is_valid_regex(input):
+def clean_up(s):
+    if not is_valid_regex(s):
         return 'invalid regex'
-    input = replace_metas(input)
-    input = tokenize_regex(input)
-    input = replace_char_ranges(input)
-    input = r''.join(input)
-    input = tokenize_regex(input, False)
-    print(input, 'inNNNNN')
+    s = replace_metas(s)
+    s = tokenize_regex(s)
+    s = replace_char_ranges(s)
+    s = r''.join(s)
+    s = tokenize_regex(s, False)
 
     i = 0
-    while i < len(input):
-        token = input[i]
+    while i < len(s):
+        token = s[i]
         if regex.match(range_regex, token):
             range_tokens = regex.findall(r'\d+|,', token)
             if range_tokens[-1] == ',':
@@ -172,21 +153,18 @@ def clean_up(input):
             else:
                 i += 1
                 continue
-            input[i] = f'{{{range_tokens[0]},{range_tokens[1]}}}'
+            s[i] = f'{{{range_tokens[0]},{range_tokens[1]}}}'
             i += 1
             continue
-        if i != len(input) - 1:
-            if regex.match(range_regex, input[i + 1]):
+        if i != len(s) - 1:
+            if regex.match(range_regex, s[i + 1]):
                 if token != ')':
-                    input.insert(i, '(')
-                    input.insert(i + 2, ')')
+                    s.insert(i, '(')
+                    s.insert(i + 2, ')')
                     i += 3
                     continue
         i += 1
-    
-
-    print(input, 'inNWWWWNNNN')
-    return input
+    return s
 
 
 def tokens_to_dict(tokens):
@@ -228,17 +206,12 @@ def group_or_operands(list_dict):
 
 
 def regex_product(tokens):
-    # print('doinga important thing', tokens)
     if all(type(x) is str for x in tokens):
         return [''.join(tokens)]
-        # print(tokens)
-        # return [''.join(x) for x in product(tokens)]
     else:
-
         for i, token in enumerate(tokens):
             if len(token) > 0 and type(token[0]) is list:
                 tokens[i] = list(flatten(token))
-
         poss = [''.join(flatten(x)) for x in product(*tokens)]
     if poss == []:
         poss = ['']
@@ -246,6 +219,7 @@ def regex_product(tokens):
 
 
 def evaluate_group(tokens, list_dict):
+    # replace eg a{0,2} with (|a|aa)
     i = 0
     while i < len(tokens):
         t = tokens[i]
@@ -298,12 +272,8 @@ def possibilities(list_dict):
 
     for key in keys:
         tokens = list_dict[key]
-        print(tokens)
-        
         tokens = evaluate(tokens, list_dict)
-
         list_dict[key] = tokens
-        # print(list_dict)
     poss = list_dict[keys[-1]]
     if len(poss) > 0 and type(poss[0]) is list:
         poss = list(flatten(poss))
@@ -314,15 +284,13 @@ def possibilities(list_dict):
 def regex_possibilities(s):
     s = clean_up(s)
     s = tokens_to_dict(s)
-    # print('reREWALLLLLLLLLLLLal', s)
     s = group_or_operands(s)
-    # print('reREWALLLLLLLLLLLLal', s)
     return possibilities(s)
 
 
-# test = r'bu|[rn]t|[coy]e|[mtg]a|j|iso|n[hl]|[ae]d|lev|sh|[lnd]i|[po]o|ls'
-# test = r'a.a|i..n|j|oo|a.t|i..o|a..i|bu|n.e|ay.|r.e|po|ma|nd'
-# test = r'...'
+test = r'bu|[rn]t|[coy]e|[mtg]a|j|iso|n[hl]|[ae]d|lev|sh|[lnd]i|[po]o|ls'
+# (?# test = r'a.a|i..n|j|oo|a.t|i..o|a..i|bu|n.e|ay.|r.e|po|ma|nd')
+# (?# test = r'(a|u|(o|i)){0,2}')
 
 def do_a_test():
     test = '.alo[oefag]n.\\+'
@@ -333,36 +301,16 @@ def do_a_test():
     assert null == com
 
 # test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
-# test = r'[\SA-Z]P'
+# test = r'[\SA-Z]?P'
 # test = r'((a|b)|c) '
 # test = r'([abc]|AASSSD?DFF|(e|on))vo'
 # test = r'(D?D|u)vo'
-test = r'a?'
+# test = r'a?'
 # test = r'm?'
 # print([test])
 result = regex_possibilities(test)
+assert all(bool(regex.match(f'^{test}$', x)) for x in result)
 
-print(sorted(result))
-# print(len(result))
+# print(sorted(result))
+print(len(result))
 
-
-# s = b'426c616168'
-
-# print(b"\077\046\014".decode("utf-8"))
-# s = b"\000".decode("utf-8")
-# s = '\x00' # hexadecimal character
-# print(regex.findall(".", s))
-# for i in range(128):
-#     print(chr(i))
-# print(''.join(chr(i) for i in range(128)))
-
-
-#
-# cProfile.run('regex_possibilities(test)', 'stats')
-#
-# import pstats
-# from pstats import SortKey
-# p = pstats.Stats('stats')
-# p.strip_dirs().sort_stats(-1).print_stats()
-# p.sort_stats(SortKey.CUMULATIVE).print_stats(20)
-# # p.sort_stats('tottime').print_stats(10)
