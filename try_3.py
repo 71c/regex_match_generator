@@ -226,10 +226,13 @@ def evaluate_group(tokens, list_dict):
         if type(t) is str and regex.match(range_regex, t):
             the_range = range_token_to_range(t)
             repeated = [[tokens[i - 1]] * n for n in the_range]
-            for j in range(1, len(repeated) * 2 - 1, 2):
-                repeated.insert(j, '|')
-            repeated = evaluate(repeated, list_dict)
-            repeated = list(flatten(repeated))
+            if len(repeated) == 1:
+                repeated = [evaluate(repeated[0], list_dict)]
+            else:
+                for j in range(1, len(repeated) * 2 - 1, 2):
+                    repeated.insert(j, '|')
+                repeated = evaluate(repeated, list_dict)
+                repeated = list(flatten(repeated))
             tokens.pop(i)
             new_key = max(list_dict.keys()) + 1
             list_dict[new_key] = repeated
@@ -288,17 +291,25 @@ def regex_possibilities(s):
     return possibilities(s)
 
 
-test = r'bu|[rn]t|[coy]e|[mtg]a|j|iso|n[hl]|[ae]d|lev|sh|[lnd]i|[po]o|ls'
-# (?# test = r'a.a|i..n|j|oo|a.t|i..o|a..i|bu|n.e|ay.|r.e|po|ma|nd')
-# (?# test = r'(a|u|(o|i)){0,2}')
+# test = r'bu|[rn]t|[coy]e|[mtg]a|j|iso|n[hl]|[ae]d|lev|sh|[lnd]i|[po]o|ls'
+# test = r'a.a|i..n|j|oo|a.t|i..o|a..i|bu|n.e|ay.|r.e|po|ma|nd')
+# test = r'(a|u|(o|ias{2,4}df))END{1}'
+# test = r'a{,11}o{0,11}[asdfjklqwer]{0,3}'
+# test = r'.{2}[asdfjklqwer]{0,3}'
+# test = r'.{2}'
+test = r'\{(\d{1,1},?\d{0,1}|,\d{1,1})\}'
+
 
 def do_a_test():
     test = '.alo[oefag]n.\\+'
     com = regex_possibilities(test)
     dot = tuple(map(chr, range(0, 128)))
+    dot = tuple(x for x in dot if x not in ('\n', '\r'))
     prod = product(dot, ('alo',), ('o', 'e', 'f', 'a', 'g'), ('n',), dot, ('+',))
     null = {''.join(x) for x in prod}
     assert null == com
+
+
 
 # test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
 # test = r'[\SA-Z]?P'
@@ -308,9 +319,14 @@ def do_a_test():
 # test = r'a?'
 # test = r'm?'
 # print([test])
+
+
+
+
 result = regex_possibilities(test)
-assert all(bool(regex.match(f'^{test}$', x)) for x in result)
 
 # print(sorted(result))
 print(len(result))
+assert all(bool(regex.match(f'^{test}$', x)) for x in result)
+
 
