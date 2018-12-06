@@ -228,11 +228,18 @@ def group_or_operands(list_dict):
 
 
 def regex_product(tokens):
+    # print('doinga important thing', tokens)
     if all(type(x) is str for x in tokens):
-        # return [''.join(tokens)]
-        print(tokens)
-        return [''.join(x) for x in product(tokens)]
+        return [''.join(tokens)]
+        # print(tokens)
+        # return [''.join(x) for x in product(tokens)]
     else:
+
+        for i, token in enumerate(tokens):
+            if len(token) > 0 and type(token[0]) is list:
+                tokens[i] = list(flatten(token))
+
+
         poss = [''.join(flatten(x)) for x in product(*tokens)]
     if poss == []:
         poss = ['']
@@ -293,12 +300,30 @@ def possibilities(list_dict):
                 continue
             i += 1
         print(tokens)
+        
         tokens = evaluate(tokens, list_dict)
-        if len(tokens) > 0 and type(tokens[0]) is list:
-            tokens = list(flatten(tokens))
+        
+        # if len(tokens) > 0 and type(tokens[0]) is list:
+            # tokens = list(flatten(tokens))
+            # tokens = [''.join(t) for t in tokens]
+            # tokens = list(flatten(tokens))
+        # if len(tokens) > 0 and all(type(x) is list for x in tokens):
+        #     print(tokens, 'HOIHOHO')
+        #     tokens = list(flatten(tokens))
+        # if len(tokens) > 0 and all(type(x) is list for x in tokens):
+        #     print(tokens, 'HOIHOHO')
+        #     tokens = [[x] for x in list(flatten(tokens))]
+        # if len(tokens) > 0 and all(type(x) is list for x in tokens):
+        #     print(tokens, 'HOIHOHO')
+        #     tokens = [[x] for x in list(flatten(tokens))]
+        #     # tokens = [[''.join(x)] for x in tokens]
+
+
         list_dict[key] = tokens
         print(list_dict)
     poss = list_dict[keys[-1]]
+    if len(poss) > 0 and type(poss[0]) is list:
+        poss = list(flatten(poss))
     poss = set(poss)
     return poss
 
@@ -325,9 +350,10 @@ def do_a_test():
     assert null == com
 
 # test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
-test = r'[\SA-Z]P'
+# test = r'[\SA-Z]P'
 # test = r'((a|b)|c) '
-# (?# test = r'([abc]|(d|e))')
+test = r'([abc]|AASSSD?DFF|(e|on))vo'
+# test = r'm?'
 # print([test])
 result = regex_possibilities(test)
 
