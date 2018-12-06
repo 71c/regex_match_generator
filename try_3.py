@@ -8,7 +8,8 @@ def flatten(listOfLists):
 
 
 bs = r'(?<!\\)\\'
-no_bs = rf'(?<!{bs})'
+# no_bs = rf'(?<!{bs})'
+no_bs = r'(?<=(?:[^\\]|^)(?:\\\\)*)'
 range_regex = rf'{no_bs}\{{(?:\d+,?\d*|,\d+){no_bs}\}}'
 char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\.)+(?:{no_bs}\])'
 backslash = r'\e'[0]
@@ -66,15 +67,16 @@ def replace_metas(s):
     
     s = regex.sub(rf'{before_charrange_part}\\w{after_charrange_part}', 'A-Za-z0-9_', s)
     s = regex.sub(rf'{before_charrange_part}\\d{after_charrange_part}', '0-9', s)
-    s = regex.sub(rf'{before_charrange_part}\\s{after_charrange_part}', r'\\f\\n\\r\\t\\v', s)
+    s = regex.sub(rf'{before_charrange_part}\\s{after_charrange_part}', r' \t\n\r\f\v', s)
+    s = regex.sub(rf'{before_charrange_part}\\b{after_charrange_part}', '\b', s)
 
     s = regex.sub(rf'{no_bs}\.', dot_chars, s)
-    s = regex.sub(rf'{no_bs}\\w', '[A-Za-z0-9_]', s)
-    s = regex.sub(rf'{no_bs}\\W', '[^A-Za-z0-9_]', s)
+    s = regex.sub(rf'{no_bs}\\w', '[a-zA-Z0-9_]', s)
+    s = regex.sub(rf'{no_bs}\\W', '[^a-zA-Z0-9_]', s)
     s = regex.sub(rf'{no_bs}\\d', '[0-9]', s)
     s = regex.sub(rf'{no_bs}\\D', '[^0-9]', s)
-    s = regex.sub(rf'{no_bs}\\s', r'[ \\f\\n\\r\\t\\v]', s)
-    s = regex.sub(rf'{no_bs}\\S', r'[^ \\f\\n\\r\\t\\v]', s)
+    s = regex.sub(rf'{no_bs}\\s', r'[ \t\n\r\f\v]', s)
+    s = regex.sub(rf'{no_bs}\\S', r'[^ \t\n\r\f\v]', s)
     s = regex.sub(rf'{no_bs}\\f', '\f', s)
     s = regex.sub(rf'{no_bs}\\n', '\n', s)
     s = regex.sub(rf'{no_bs}\\r', '\r', s)
@@ -86,7 +88,7 @@ def replace_metas(s):
     s = regex.sub(rf'{no_bs}\+', '{1,}', s)
     s = regex.sub(rf'(?<!{bs}|{range_regex})\?(?=\?)', '{0,1}', s)
     s = regex.sub(rf'(?<!{bs}|{range_regex})\?', '{0,1}', s)
-    
+    print(s)
     return s
 
 
@@ -297,7 +299,9 @@ def regex_possibilities(s):
 # test = r'a{,11}o{0,11}[asdfjklqwer]{0,3}'
 # test = r'.{2}[asdfjklqwer]{0,3}'
 # test = r'.{2}'
-test = r'\{(\d{1,1},?\d{0,1}|,\d{1,1})\}'
+# test = r'\{(\d{1,1},?\d{0,1}|,\d{1,1})\}'
+test = r'\\\\n'
+# (?# test = r'[\s]')
 
 
 def do_a_test():
@@ -325,7 +329,7 @@ def do_a_test():
 
 result = regex_possibilities(test)
 
-# print(sorted(result))
+print(sorted(result))
 print(len(result))
 assert all(bool(regex.match(f'^{test}$', x)) for x in result)
 
