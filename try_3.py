@@ -229,7 +229,9 @@ def group_or_operands(list_dict):
 
 def regex_product(tokens):
     if all(type(x) is str for x in tokens):
-        return [''.join(tokens)]
+        # return [''.join(tokens)]
+        print(tokens)
+        return [''.join(x) for x in product(tokens)]
     else:
         poss = [''.join(flatten(x)) for x in product(*tokens)]
     if poss == []:
@@ -290,12 +292,13 @@ def possibilities(list_dict):
                 tokens[i - 1] = new_key
                 continue
             i += 1
-
+        print(tokens)
         tokens = evaluate(tokens, list_dict)
+        if len(tokens) > 0 and type(tokens[0]) is list:
+            tokens = list(flatten(tokens))
         list_dict[key] = tokens
+        print(list_dict)
     poss = list_dict[keys[-1]]
-    if len(poss) > 0 and type(poss[0]) is list:
-        poss = list(flatten(poss))
     poss = set(poss)
     return poss
 
@@ -322,8 +325,8 @@ def do_a_test():
     assert null == com
 
 # test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
-test = r'i[\S ]'
-test = r'((a|v|d)| )'
+test = r'[\SA-Z]P'
+# test = r'((a|b)|c) '
 # (?# test = r'([abc]|(d|e))')
 # print([test])
 result = regex_possibilities(test)
