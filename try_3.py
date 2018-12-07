@@ -9,18 +9,16 @@ def flatten(listOfLists):
 
 no_bs = r'(?<=(?:[^\\]|^)(?:\\\\)*)'
 range_regex = rf'{no_bs}\{{(?:\d+,?\d*|,\d+){no_bs}\}}'
-char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\.)+(?:{no_bs}\])'
+char_range = rf'{no_bs}\[(?:[^\]\\]|\\.)+{no_bs}\]'
 backslash = r'\e'[0]
 
 metas = r'[|(){}?*+[\]\.\\]'
 
-def make_excluded_char_range(excluded_chars):
-    all_chars = [chr(i) for i in range(0, 128)] # not LF or CR (\n or \r)
-    all_chars = [c for c in all_chars if c not in excluded_chars]
-    all_chars = [regex.sub(metas, lambda x: rf'\{x.group(0)}', q) for q in all_chars]
-    all_chars = '|'.join(a for a in all_chars)
-    all_chars = '(' + all_chars + ')'
-    return all_chars
+def make_excluded_char_range(excluded):
+    chars = [c for c in map(chr, range(0, 128)) if c not in excluded]
+    chars = [regex.sub(metas, lambda x: rf'\{x.group(0)}', q) for q in chars]
+    chars = '(' + '|'.join(chars) + ')'
+    return chars
 
 dot_chars = make_excluded_char_range(['\n', '\r'])
 dot_chars = regex.sub(r'\\\\', r'\\\\\\\\', dot_chars)
@@ -60,8 +58,10 @@ def replace_metas(s):
                 toks[i] = rf'({"|".join(stra)})'
     s = ''.join(toks)
 
-    before_charrange_part = rf'(?<=(?:{no_bs}\[)(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*)'
-    after_charrange_part  = rf'(?=(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*(?:{no_bs}\]))'
+    # filler = r'(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*'
+    filler = r'(?:[^\]\\]|\\.)*'
+    before_charrange_part = rf'(?<={no_bs}\[{filler})'
+    after_charrange_part  = rf'(?={filler}{no_bs}\])'
     
     s = regex.sub(rf'{before_charrange_part}\\w{after_charrange_part}', 'A-Za-z0-9_', s)
     s = regex.sub(rf'{before_charrange_part}\\d{after_charrange_part}', '0-9', s)
@@ -136,7 +136,7 @@ def clean_up(s):
     s = replace_metas(s)
     s = tokenize_regex(s)
     s = replace_char_ranges(s)
-    s = r''.join(s)
+    s = ''.join(s)
     s = tokenize_regex(s, False)
 
     i = 0
@@ -270,13 +270,9 @@ def possibilities(list_dict):
         if len(tokens) == 1 and type(tokens[0]) is int:
             list_dict[key] = list_dict.pop(tokens[0])
             continue
-
     keys = sorted(list_dict.keys(), reverse=True)
-
     for key in keys:
-        tokens = list_dict[key]
-        tokens = evaluate(tokens, list_dict)
-        list_dict[key] = tokens
+        list_dict[key] = evaluate(list_dict[key], list_dict)
     poss = list_dict[keys[-1]]
     if len(poss) > 0 and type(poss[0]) is list:
         poss = list(flatten(poss))
