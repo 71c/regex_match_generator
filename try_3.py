@@ -7,8 +7,6 @@ def flatten(listOfLists):
     return chain.from_iterable(listOfLists)
 
 
-bs = r'(?<!\\)\\'
-# no_bs = rf'(?<!{bs})'
 no_bs = r'(?<=(?:[^\\]|^)(?:\\\\)*)'
 range_regex = rf'{no_bs}\{{(?:\d+,?\d*|,\d+){no_bs}\}}'
 char_range = rf'(?:{no_bs}\[)(?:[^\]\\]|\\.)+(?:{no_bs}\])'
@@ -86,8 +84,8 @@ def replace_metas(s):
 
     s = regex.sub(rf'{no_bs}\*', '{0,}', s)
     s = regex.sub(rf'{no_bs}\+', '{1,}', s)
-    s = regex.sub(rf'(?<!{bs}|{range_regex})\?(?=\?)', '{0,1}', s)
-    s = regex.sub(rf'(?<!{bs}|{range_regex})\?', '{0,1}', s)
+    s = regex.sub(rf'(?<!{no_bs}\\|{range_regex})\?(?=\?)', '{0,1}', s)
+    s = regex.sub(rf'(?<!{no_bs}\\|{range_regex})\?', '{0,1}', s)
     print(s)
     return s
 
