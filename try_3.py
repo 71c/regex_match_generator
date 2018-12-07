@@ -86,7 +86,6 @@ def replace_metas(s):
     s = regex.sub(rf'{no_bs}\+', '{1,}', s)
     s = regex.sub(rf'(?<!{no_bs}\\|{range_regex})\?(?=\?)', '{0,1}', s)
     s = regex.sub(rf'(?<!{no_bs}\\|{range_regex})\?', '{0,1}', s)
-    print(s)
     return s
 
 
@@ -104,8 +103,14 @@ def tokenize_regex(s, group_char_ranges=True):
 
 
 def replace_char_range(char_range):
-    pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|(?:[^\]\\]|\\[\]\-\\^])'
+    # pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|(?:[^\]\\]|\\[\]\-\\^])'
+    # pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|[^\]\\]|\\[\]\-\\^]'
+    # pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])(?:-(?:[^-\]\\]|\\[\]\-\\^]))?|-'
+    # pattern = r'(?:[^-\]\\]|\\[\]\-\\^])(?:-(?:[^-\]\\]|\\[\]\-\\^]))?|-'
+    pattern = r'(?:[^-\]\\]|\\[\]\-\\])(?:-(?:[^-\]\\]|\\[\]\-\\]))?|-'
+    print(['char range', char_range])
     sub_tokens = regex.findall(pattern, char_range[1:-1])
+    print('char range tokens', sub_tokens)
     new_sub_tokens = []
     for i, sub_token in enumerate(sub_tokens):
         if len(sub_token) == 3:
@@ -117,6 +122,7 @@ def replace_char_range(char_range):
                 new_sub_tokens.append(c)
         else:
             new_sub_tokens.append(sub_token)
+    print(new_sub_tokens)
     if new_sub_tokens[0] == '^':
         new_sub_tokens = make_excluded_char_range(new_sub_tokens[1:])
         return new_sub_tokens
@@ -180,13 +186,12 @@ def tokens_to_dict(tokens):
             are_done[curr_key] = False
             if curr_key not in lists:
                 lists[curr_key] = []
-            continue
-        if token == ')':
+        elif token == ')':
             are_done[curr_key] = True
             while are_done[curr_key]:
                 curr_key -= 1
-            continue
-        lists[curr_key].append(token)
+        else:
+            lists[curr_key].append(token)
     return lists
 
 
@@ -239,7 +244,6 @@ def evaluate_group(tokens, list_dict):
             tokens[i - 1] = new_key
             continue
         i += 1
-    
     for i, t in enumerate(tokens):
         if type(t) is int:
             tokens[i] = list_dict[t]
@@ -294,8 +298,12 @@ def regex_possibilities(s):
 # test = r'.{2}[asdfjklqwer]{0,3}'
 # test = r'.{2}'
 # test = r'\{(\d{1,1},?\d{0,1}|,\d{1,1})\}'
-test = r'\\\\n'
-# (?# test = r'[\s]')
+# test = r'\\\\n'
+# test = r'[\^a]'
+# test = r'[\p]'
+# test = r'[\\]'
+# test = r'[\s]'
+test = r'[^-b]'
 
 
 def do_a_test():
@@ -322,9 +330,15 @@ def do_a_test():
 
 
 result = regex_possibilities(test)
+result = sorted(result)
 
-print(sorted(result))
+print(result)
 print(len(result))
-assert all(bool(regex.match(f'^{test}$', x)) for x in result)
+if result != ['invalid regex']:
+    assert all(bool(regex.match(f'^{test}$', x)) for x in result)
+
+
+
+
 
 
