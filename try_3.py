@@ -81,6 +81,8 @@ def replace_metas(s):
     s = regex.sub(rf'{no_bs}\\t', '\t', s)
     s = regex.sub(rf'{no_bs}\\v', '\v', s)
     s = regex.sub(rf'{no_bs}\\a', '\a', s)
+    s = regex.sub(rf'{no_bs}\\x([A-Fa-f0-9]{{2}})', lambda m: chr(int(m.group(1), 16)), s)
+    # print([s])
 
     s = regex.sub(rf'{no_bs}\*', '{0,}', s)
     s = regex.sub(rf'{no_bs}\+', '{1,}', s)
@@ -127,8 +129,11 @@ def replace_char_range(char_range):
         new_sub_tokens = [t if t != r'\\' else '\\' for t in sub_tokens]
         new_sub_tokens = make_excluded_char_range(new_sub_tokens)
         return new_sub_tokens
+    new_sub_tokens = [regex.sub(r'[|(){}?*+[\.\\]', lambda x: rf'\{x.group(0)}', q) for q in new_sub_tokens]
     # print('new char class tokens', new_sub_tokens)
-    return f"({'|'.join(new_sub_tokens)})"
+    result = f"({'|'.join(new_sub_tokens)})"
+    result = regex.sub(r'\\\\', r'\\', result)
+    return result
 
 
 def replace_char_ranges(tokens):
@@ -347,11 +352,11 @@ tests = [
     r'[bui\-p]',
     r'[bu\i\-p]',
     r'((a|[bui\-p]b)|c|[^abdd^])',
-    # r'(([^\\])(\\\\){,5})'
+    r'(([^\\])(\\\\){,5})'
     r'[^\\]',
-    r'[\x00-\x7F]'
+    r'[\x00-\x7f]'
 ]
-tests = [r'[\x00-\x7f]']
+# tests = [r'[\x00-\x7f]']
 # tests = [r'[\\]']
 # tests = [r'[^\\]']
 # r'((a|[bui\-p]b)|c|[^abdd^]) ?',
@@ -359,10 +364,12 @@ tests = [r'[\x00-\x7f]']
 # tests = [r'[abc\]def]']
 for test in tests:
     result = sorted(regex_possibilities(test))
-    print('result', result)
+    # print('result', result)
+    # print(list(map(ord, result[1:])))
     # print(len(result))
     if not test_regex(test):
         print(test)
+        print(result)
 
 
 # test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
