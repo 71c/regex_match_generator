@@ -103,8 +103,7 @@ def tokenize_regex(s, group_char_ranges=True):
 
 
 def replace_char_range(char_range):
-    pattern = r'(?:[^-\]\\]|\\[\]\-\\]|^\])(?:-(?:[^-\]\\]|\\[\]\-\\]))?|-'
-    # pattern = r'(?:[^-\]\\]|\\[\]\\]|^\])(?:-(?:[^-\]\\]|\\[\]\\]))?|-'
+    pattern = r'(?:[^-\]\\]|\\[\]\\]|^\])(?:-(?:[^-\]\\]|\\[\]\\]))?|-'
     char_range = char_range[1:-1]
     if char_range[0] == '^':
         complemented = True
@@ -112,7 +111,7 @@ def replace_char_range(char_range):
     else:
         complemented = False
     sub_tokens = regex.findall(pattern, char_range)
-    print('toks', sub_tokens)
+    # print('char class tokens', sub_tokens)
     new_sub_tokens = []
     for i, sub_token in enumerate(sub_tokens):
         if len(sub_token) == 3:
@@ -125,8 +124,10 @@ def replace_char_range(char_range):
         else:
             new_sub_tokens.append(sub_token)
     if complemented:
+        new_sub_tokens = [t if t != r'\\' else '\\' for t in sub_tokens]
         new_sub_tokens = make_excluded_char_range(new_sub_tokens)
         return new_sub_tokens
+    # print('new char class tokens', new_sub_tokens)
     return f"({'|'.join(new_sub_tokens)})"
 
 
@@ -343,13 +344,23 @@ tests = [
     r'((a|b)|c) ',
     r'm?',
     r'[\SA-Z]?P',
-    r'[bui\-p]'
+    r'[bui\-p]',
+    r'[bu\i\-p]',
+    r'((a|[bui\-p]b)|c|[^abdd^])',
+    # r'(([^\\])(\\\\){,5})'
+    r'[^\\]',
+    r'[\x00-\x7F]'
 ]
+tests = [r'[\x00-\x7f]']
+# tests = [r'[\\]']
+# tests = [r'[^\\]']
 # r'((a|[bui\-p]b)|c|[^abdd^]) ?',
-tests = [r'[bu\i\-p]']
+# tests = [r'[bu\i\-p]']
 # tests = [r'[abc\]def]']
 for test in tests:
-    print('result', sorted(regex_possibilities(test)))
+    result = sorted(regex_possibilities(test))
+    print('result', result)
+    # print(len(result))
     if not test_regex(test):
         print(test)
 
