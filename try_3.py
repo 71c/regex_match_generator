@@ -9,7 +9,7 @@ def flatten(listOfLists):
 
 no_bs = r'(?<=(?:[^\\]|^)(?:\\\\)*)'
 range_regex = rf'{no_bs}\{{(?:\d+,?\d*|,\d+){no_bs}\}}'
-char_range = rf'{no_bs}\[(?:[^\]\\]|\\.)+{no_bs}\]'
+char_range = rf'{no_bs}\[\]?(?:[^\]\\]|\\.)+{no_bs}\]'
 backslash = r'\e'[0]
 
 metas = r'[|(){}?*+[\]\.\\]'
@@ -103,14 +103,16 @@ def tokenize_regex(s, group_char_ranges=True):
 
 
 def replace_char_range(char_range):
-    # pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|(?:[^\]\\]|\\[\]\-\\^])'
-    # pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])-(?:[^-\]\\]|\\[\]\-\\^])|[^\]\\]|\\[\]\-\\^]'
-    # pattern = rf'{no_bs}(?:[^-\]\\]|\\[\]\-\\^])(?:-(?:[^-\]\\]|\\[\]\-\\^]))?|-'
-    # pattern = r'(?:[^-\]\\]|\\[\]\-\\^])(?:-(?:[^-\]\\]|\\[\]\-\\^]))?|-'
-    pattern = r'(?:[^-\]\\]|\\[\]\-\\])(?:-(?:[^-\]\\]|\\[\]\-\\]))?|-'
-    print(['char range', char_range])
-    sub_tokens = regex.findall(pattern, char_range[1:-1])
-    print('char range tokens', sub_tokens)
+    pattern = r'(?:[^-\]\\]|\\[\]\-\\]|^\])(?:-(?:[^-\]\\]|\\[\]\-\\]))?|-'
+    # pattern = r'(?:[^-\]\\]|\\[\]\\]|^\])(?:-(?:[^-\]\\]|\\[\]\\]))?|-'
+    char_range = char_range[1:-1]
+    if char_range[0] == '^':
+        complemented = True
+        char_range = char_range[1:]
+    else:
+        complemented = False
+    sub_tokens = regex.findall(pattern, char_range)
+    print('toks', sub_tokens)
     new_sub_tokens = []
     for i, sub_token in enumerate(sub_tokens):
         if len(sub_token) == 3:
@@ -122,9 +124,8 @@ def replace_char_range(char_range):
                 new_sub_tokens.append(c)
         else:
             new_sub_tokens.append(sub_token)
-    print(new_sub_tokens)
-    if new_sub_tokens[0] == '^':
-        new_sub_tokens = make_excluded_char_range(new_sub_tokens[1:])
+    if complemented:
+        new_sub_tokens = make_excluded_char_range(new_sub_tokens)
         return new_sub_tokens
     return f"({'|'.join(new_sub_tokens)})"
 
@@ -291,6 +292,24 @@ def regex_possibilities(s):
     return possibilities(s)
 
 
+
+
+
+def test_regex_1():
+    test = '.alo[oefag]n.\\+'
+    com = regex_possibilities(test)
+    dot = tuple(map(chr, range(0, 128)))
+    dot = tuple(x for x in dot if x not in ('\n', '\r'))
+    prod = product(dot, ('alo',), ('o', 'e', 'f', 'a', 'g'), ('n',), dot, ('+',))
+    null = {''.join(x) for x in prod}
+    assert null == com
+
+def test_regex(test):
+    result = sorted(regex_possibilities(test))
+    if result != ['invalid regex']:
+        return all(bool(regex.match(f'^{test}$', x)) for x in result)
+    return True
+
 # test = r'bu|[rn]t|[coy]e|[mtg]a|j|iso|n[hl]|[ae]d|lev|sh|[lnd]i|[po]o|ls'
 # test = r'a.a|i..n|j|oo|a.t|i..o|a..i|bu|n.e|ay.|r.e|po|ma|nd')
 # test = r'(a|u|(o|ias{2,4}df))END{1}'
@@ -303,18 +322,36 @@ def regex_possibilities(s):
 # test = r'[\p]'
 # test = r'[\\]'
 # test = r'[\s]'
-test = r'[^-b]'
+# test = r'[^-b]'
 
-
-def do_a_test():
-    test = '.alo[oefag]n.\\+'
-    com = regex_possibilities(test)
-    dot = tuple(map(chr, range(0, 128)))
-    dot = tuple(x for x in dot if x not in ('\n', '\r'))
-    prod = product(dot, ('alo',), ('o', 'e', 'f', 'a', 'g'), ('n',), dot, ('+',))
-    null = {''.join(x) for x in prod}
-    assert null == com
-
+tests = [
+    r'[^-b]', 
+    r'[\s]', 
+    r'[\\]', 
+    r'[\p]', 
+    r'[\^a]', 
+    r'\\\\n',
+    r'[]abc]',
+    r'[ab]c]',
+    r'[ab\]c]',
+    r'[ab\^c]',
+    r'[ab^c]',
+    r'\{(\d{1,1},?\d{0,1}|,\d{1,1})\}',
+    r'.{2}',
+    r'(a|u|(o|ias{2,4}df))END{1}',
+    r'bu|[rn]t|[coy]e|[mtg]a|j|iso|n[hl]|[ae]d|lev|sh|[lnd]i|[po]o|ls',
+    r'((a|b)|c) ',
+    r'm?',
+    r'[\SA-Z]?P',
+    r'[bui\-p]'
+]
+# r'((a|[bui\-p]b)|c|[^abdd^]) ?',
+tests = [r'[bu\i\-p]']
+# tests = [r'[abc\]def]']
+for test in tests:
+    print('result', sorted(regex_possibilities(test)))
+    if not test_regex(test):
+        print(test)
 
 
 # test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
@@ -329,13 +366,6 @@ def do_a_test():
 
 
 
-result = regex_possibilities(test)
-result = sorted(result)
-
-print(result)
-print(len(result))
-if result != ['invalid regex']:
-    assert all(bool(regex.match(f'^{test}$', x)) for x in result)
 
 
 
