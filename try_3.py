@@ -14,11 +14,13 @@ backslash = r'\e'[0]
 
 metas = r'[|(){}?*+[\]\.\\]'
 
+
 def make_excluded_char_range(excluded):
     chars = [c for c in map(chr, range(0, 128)) if c not in excluded]
     chars = [regex.sub(metas, lambda x: rf'\{x.group(0)}', q) for q in chars]
     chars = '(' + '|'.join(chars) + ')'
     return chars
+
 
 dot_chars = make_excluded_char_range(['\n', '\r'])
 dot_chars = regex.sub(r'\\\\', r'\\\\\\\\', dot_chars)
@@ -60,13 +62,13 @@ def replace_metas(s):
 
     # filler = r'(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*'
     filler = r'(?:[^\]\\]|\\.)*'
-    before_charrange_part = rf'(?<={no_bs}\[{filler})'
-    after_charrange_part  = rf'(?={filler}{no_bs}\])'
-    
-    s = regex.sub(rf'{before_charrange_part}\\w{after_charrange_part}', 'A-Za-z0-9_', s)
-    s = regex.sub(rf'{before_charrange_part}\\d{after_charrange_part}', '0-9', s)
-    s = regex.sub(rf'{before_charrange_part}\\s{after_charrange_part}', r' \t\n\r\f\v', s)
-    s = regex.sub(rf'{before_charrange_part}\\b{after_charrange_part}', '\b', s)
+    before_charset = rf'(?<={no_bs}\[{filler})'
+    after_charset = rf'(?={filler}{no_bs}\])'
+
+    s = regex.sub(rf'{before_charset}\\w{after_charset}', 'A-Za-z0-9_', s)
+    s = regex.sub(rf'{before_charset}\\d{after_charset}', '0-9', s)
+    s = regex.sub(rf'{before_charset}\\s{after_charset}', r' \t\n\r\f\v', s)
+    s = regex.sub(rf'{before_charset}\\b{after_charset}', '\b', s)
 
     s = regex.sub(rf'{no_bs}\.', dot_chars, s)
     s = regex.sub(rf'{no_bs}\\w', '[a-zA-Z0-9_]', s)
@@ -81,7 +83,8 @@ def replace_metas(s):
     s = regex.sub(rf'{no_bs}\\t', '\t', s)
     s = regex.sub(rf'{no_bs}\\v', '\v', s)
     s = regex.sub(rf'{no_bs}\\a', '\a', s)
-    s = regex.sub(rf'{no_bs}\\x([A-Fa-f0-9]{{2}})', lambda m: chr(int(m.group(1), 16)), s)
+    s = regex.sub(rf'{no_bs}\\x([A-Fa-f0-9]{{2}})',
+                  lambda m: chr(int(m.group(1), 16)), s)
     # print([s])
 
     s = regex.sub(rf'{no_bs}\*', '{0,}', s)
@@ -129,7 +132,8 @@ def replace_char_range(char_range):
         new_sub_tokens = [t if t != r'\\' else '\\' for t in sub_tokens]
         new_sub_tokens = make_excluded_char_range(new_sub_tokens)
         return new_sub_tokens
-    new_sub_tokens = [regex.sub(r'[|(){}?*+[\.\\]', lambda x: rf'\{x.group(0)}', q) for q in new_sub_tokens]
+    new_sub_tokens = [regex.sub(
+        r'[|(){}?*+[\.\\]', lambda x: rf'\{x.group(0)}', q) for q in new_sub_tokens]
     # print('new char class tokens', new_sub_tokens)
     result = f"({'|'.join(new_sub_tokens)})"
     result = regex.sub(r'\\\\', r'\\', result)
@@ -298,17 +302,16 @@ def regex_possibilities(s):
     return possibilities(s)
 
 
-
-
-
 def test_regex_1():
     test = '.alo[oefag]n.\\+'
     com = regex_possibilities(test)
     dot = tuple(map(chr, range(0, 128)))
     dot = tuple(x for x in dot if x not in ('\n', '\r'))
-    prod = product(dot, ('alo',), ('o', 'e', 'f', 'a', 'g'), ('n',), dot, ('+',))
+    prod = product(dot, ('alo',), ('o', 'e', 'f',
+                                   'a', 'g'), ('n',), dot, ('+',))
     null = {''.join(x) for x in prod}
     assert null == com
+
 
 def test_regex(test):
     result = sorted(regex_possibilities(test))
@@ -330,12 +333,13 @@ def test_regex(test):
 # test = r'[\s]'
 # test = r'[^-b]'
 
+
 tests = [
-    r'[^-b]', 
-    r'[\s]', 
-    r'[\\]', 
-    r'[\p]', 
-    r'[\^a]', 
+    r'[^-b]',
+    r'[\s]',
+    r'[\\]',
+    r'[\p]',
+    r'[\^a]',
     r'\\\\n',
     r'[]abc]',
     r'[ab]c]',
@@ -380,13 +384,3 @@ for test in tests:
 # test = r'a?'
 # test = r'm?'
 # print([test])
-
-
-
-
-
-
-
-
-
-
