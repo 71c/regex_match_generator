@@ -1,5 +1,6 @@
 import regex
 from itertools import product, chain
+import cProfile
 
 
 def flatten(listOfLists):
@@ -9,15 +10,19 @@ def flatten(listOfLists):
 
 no_bs = r'(?<=(?:[^\\]|^)(?:\\\\)*)'
 range_regex = rf'{no_bs}\{{(?:\d+,?\d*|,\d+){no_bs}\}}'
-char_range = rf'{no_bs}\[\]?(?:[^\]\\]|\\.)+{no_bs}\]'
+# char_range = rf'{no_bs}\[(?:[^\]\\]|\\.)+{no_bs}\]'
+# char_range = rf'{no_bs}\[\^?\]?(?:[^\]\\]|\\.)+{no_bs}\]'
+# char_range = rf'{no_bs}\[\^?(?:\]|[^\]\\]|\\.)(?:[^\]\\]|\\.)*{no_bs}\]'
+char_range = rf'{no_bs}\[\^?(?:[^\\]|\\.)(?:[^\]\\]|\\.)*{no_bs}\]'
 backslash = r'\e'[0]
 
-metas = r'[|(){}?*+[\]\.\\]'
+
+metas = '|(){}?*+[].\\'
 
 
 def make_excluded_char_range(excluded):
     chars = [c for c in map(chr, range(0, 128)) if c not in excluded]
-    chars = [regex.sub(metas, lambda x: rf'\{x.group(0)}', q) for q in chars]
+    chars = ['\\' + c if c in metas else c for c in chars]
     chars = '(' + '|'.join(chars) + ')'
     return chars
 
@@ -57,10 +62,9 @@ def replace_metas(s):
                     stra += [regular_part]
                 if len(special_part) != 0:
                     stra += [special_part]
-                toks[i] = rf'({"|".join(stra)})'
+                toks[i] = f'({"|".join(stra)})'
     s = ''.join(toks)
 
-    # filler = r'(?:(?:\[(?:[^\]\\]|\\.)+\])|[^\]\\]|\\.)*'
     filler = r'(?:[^\]\\]|\\.)*'
     before_charset = rf'(?<={no_bs}\[{filler})'
     after_charset = rf'(?={filler}{no_bs}\])'
@@ -85,8 +89,6 @@ def replace_metas(s):
     s = regex.sub(rf'{no_bs}\\a', '\a', s)
     s = regex.sub(rf'{no_bs}\\x([A-Fa-f0-9]{{2}})',
                   lambda m: chr(int(m.group(1), 16)), s)
-    # print([s])
-
     s = regex.sub(rf'{no_bs}\*', '{0,}', s)
     s = regex.sub(rf'{no_bs}\+', '{1,}', s)
     s = regex.sub(rf'(?<!{no_bs}\\|{range_regex})\?(?=\?)', '{0,1}', s)
@@ -115,27 +117,29 @@ def replace_char_range(char_range):
         char_range = char_range[1:]
     else:
         complemented = False
-    sub_tokens = regex.findall(pattern, char_range)
-    # print('char class tokens', sub_tokens)
-    new_sub_tokens = []
-    for i, sub_token in enumerate(sub_tokens):
+    tokens = regex.findall(pattern, char_range)
+    new_tokens = []
+    for i, sub_token in enumerate(tokens):
         if len(sub_token) == 3:
             min_num = ord(sub_token[0])
             max_num = ord(sub_token[2])
             all_chars = map(chr, range(min_num, max_num + 1))
-            all_chars = [x if x != '\\' else r'\\' for x in all_chars]
+            all_chars = [c if c != '\\' else r'\\' for c in all_chars]
             for c in all_chars:
-                new_sub_tokens.append(c)
+                new_tokens.append(c)
         else:
-            new_sub_tokens.append(sub_token)
+            new_tokens.append(sub_token)
+
     if complemented:
-        new_sub_tokens = [t if t != r'\\' else '\\' for t in sub_tokens]
-        new_sub_tokens = make_excluded_char_range(new_sub_tokens)
-        return new_sub_tokens
-    new_sub_tokens = [regex.sub(
-        r'[|(){}?*+[\.\\]', lambda x: rf'\{x.group(0)}', q) for q in new_sub_tokens]
-    # print('new char class tokens', new_sub_tokens)
-    result = f"({'|'.join(new_sub_tokens)})"
+        new_tokens = [t[1] if t == r'\]' else t for t in new_tokens]
+        new_tokens = [t if t != r'\\' else '\\' for t in new_tokens]
+        new_tokens = make_excluded_char_range(new_tokens)
+        return new_tokens
+
+    new_tokens = [regex.sub(
+        r'[|(){}?*+[.\\]', lambda m: f'\\{m.group(0)}', t) for t in new_tokens]
+
+    result = f"({'|'.join(new_tokens)})"
     result = regex.sub(r'\\\\', r'\\', result)
     return result
 
@@ -258,7 +262,7 @@ def evaluate_group(tokens, list_dict):
     for i, t in enumerate(tokens):
         if type(t) is int:
             tokens[i] = list_dict[t]
-        if type(t) is str and len(t) == 2 and t[0] == backslash:
+        elif type(t) is str and len(t) == 2 and t[0] == backslash:
             tokens[i] = t[1]
     tokens = regex_product(tokens)
     return tokens
@@ -271,7 +275,7 @@ def range_token_to_range(range_token):
 
 def evaluate(tokens, list_dict):
     if '|' in tokens:
-        tokens = [token for token in tokens if token != '|']
+        tokens = [t for t in tokens if t != '|']
         tokens = [evaluate_group(t, list_dict) for t in tokens]
     else:
         tokens = evaluate_group(tokens, list_dict)
@@ -358,23 +362,33 @@ tests = [
     r'((a|[bui\-p]b)|c|[^abdd^])',
     r'(([^\\])(\\\\){,5})'
     r'[^\\]',
-    r'[\x00-\x7f]'
+    r'[\x00-\x7f]',
+    # r'[^\x00-\x7f]',
+    r'[^]]',
+    r'[^\]]',
+    r'[^uiIO\]asd-f]',
+    r'[^uiIO\]a-k]',
+    r'[uiIO\]a-k]',
 ]
+
+# tests = [r'[^]]']
 # tests = [r'[\x00-\x7f]']
 # tests = [r'[\\]']
 # tests = [r'[^\\]']
 # r'((a|[bui\-p]b)|c|[^abdd^]) ?',
 # tests = [r'[bu\i\-p]']
 # tests = [r'[abc\]def]']
-for test in tests:
-    result = sorted(regex_possibilities(test))
-    # print('result', result)
-    # print(list(map(ord, result[1:])))
-    # print(len(result))
-    if not test_regex(test):
-        print(test)
-        print(result)
 
+def run_tests():
+    for test in tests:
+        result = sorted(regex_possibilities(test))
+        # print('result', result)
+        # print(list(map(ord, result[1:])))
+        # print(len(result))
+        if not test_regex(test):
+            print(test)
+            print(result)
+run_tests()
 
 # test = r'[\Wjin-r]uio[asd-hoa]as' # ^, -, ] or \
 # test = r'[\SA-Z]?P'
